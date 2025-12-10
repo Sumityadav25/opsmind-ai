@@ -1,6 +1,5 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
-// Define the schema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
@@ -8,7 +7,6 @@ const userSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
 });
 
-// Create a model named 'User' that maps to the 'users' collection
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
-module.exports = User;
+export default User;
