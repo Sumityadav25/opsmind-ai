@@ -1,14 +1,13 @@
 import express from "express";
-import { uploadPDF } from "../controllers/uploadController.js";
 import multer from "multer";
+import { uploadPDF } from "../controllers/uploadController.js";
 
 const router = express.Router();
 
-// Multer Storage
+// 🔥 MEMORY storage REQUIRED (buffer ke liye)
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Route: POST /api/upload/pdf
-router.post("/pdf", upload.single("file"), uploadPDF);
+router.post("/", upload.single("file"), uploadPDF);
 
 export default router;
