@@ -1,14 +1,10 @@
 import express from "express";
-import {
-  askQuestion,
-  getChatHistory,
-  clearChatHistory,
-} from "../controllers/askController.js";
+import { askQuestion } from "../controllers/askController.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/ask", askQuestion);
-router.get("/history", getChatHistory);
-router.delete("/history", clearChatHistory); // 🔥 clear chat
+// 🔐 Only logged-in users can ask questions
+router.post("/", protect, askQuestion);
 
 export default router;

@@ -1,33 +1,99 @@
-const API_BASE = "https://opsmind-ai-bxta.onrender.com/api";
+const API_BASE = "http://127.0.0.1:5000/api";
 
-// Ask question
-export async function askQuestion(question) {
-  const res = await fetch(`${API_BASE}/ask`, {
+// ================= AUTH =================
+export const signup = async (data) => {
+  const res = await fetch(`${API_BASE}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+};
+
+export const login = async (data) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    console.log("LOGIN STATUS:", res.status);
+
+    const json = await res.json();
+    console.log("LOGIN RESPONSE:", json);
+
+    return json;
+  } catch (e) {
+    console.error("LOGIN FETCH FAILED:", e);
+    throw e;
+  }
+};
+
+// ================= RAG ASK =================
+export const ask = async (question) => {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API_BASE}/ask`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ question }),
   });
 
+  return res.json();
+};
+
+// ================= CHAT HISTORY =================
+export const getHistory = async () => {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API_BASE}/ask/history`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.json();
+};
+
+
+// ================= CLEAR CHAT =================
+export const clearHistory = async () => {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API_BASE}/ask/clear`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.json();
+};
+
+// ================= ADMIN =================
+export const uploadPDF = async (file) => {
+  const token = localStorage.getItem("token");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("http://127.0.0.1:5000/api/upload/user", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
   if (!res.ok) {
-    throw new Error("Ask failed");
+    throw new Error("Upload failed");
   }
 
   return res.json();
-}
+};
 
-// Get chat history
-export async function getHistory() {
-  const res = await fetch(`${API_BASE}/history`);
-  if (!res.ok) throw new Error("History fetch failed");
-  return res.json();
-}
-
-// Clear chat history
-export async function clearHistory() {
-  const res = await fetch(`${API_BASE}/history`, {
-    method: "DELETE",
-  });
-
-  if (!res.ok) throw new Error("Clear failed");
-  return res.json();
-}

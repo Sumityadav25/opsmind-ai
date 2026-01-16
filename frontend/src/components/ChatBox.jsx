@@ -1,94 +1,91 @@
 import { useEffect, useState } from "react";
-import { askQuestion, getHistory, clearHistory } from "../services/api";
-import Message from "./Message";
-import SourceList from "./SourceList";
-import Loader from "./Loader";
+import { ask, getHistory } from "../services/api";
 
 export default function ChatBox() {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sources, setSources] = useState([]);
 
-  // Load history
   useEffect(() => {
-    async function load() {
-      try {
-        const history = await getHistory();
-        const formatted = history.flatMap((h) => [
-          { role: "user", text: h.question },
-          { role: "ai", text: h.answer },
-        ]);
-        setMessages(formatted);
-      } catch {
-        console.warn("History skipped");
-      }
-    }
-    load();
+    getHistory().then((data) => {
+      if (Array.isArray(data)) setMessages(data);
+    });
   }, []);
 
-  async function handleAsk() {
-    if (!question.trim() || loading) return;
+  const send = async () => {
+    const q = question.trim();
 
-    setMessages((m) => [...m, { role: "user", text: question }]);
-    setQuestion("");
+    // 🔐 block empty / junk messages
+    if (!q || q.length < 3) {
+      setQuestion("");
+      return;
+    }
+
     setLoading(true);
-    setSources([]);
+
+    // optimistic UI (user message first)
+    setMessages((prev) => [
+      ...prev,
+      { question: q, answer: "…" }
+    ]);
+
+    setQuestion("");
 
     try {
-      const data = await askQuestion(question);
-      setMessages((m) => [...m, { role: "ai", text: data.answer }]);
-      setSources(data.sources || []);
-    } catch {
-      setMessages((m) => [...m, { role: "ai", text: "Something went wrong." }]);
-    } finally {
-      setLoading(false);
-    }
-  }
+      const res = await ask(q);
 
-  async function handleClear() {
-    await clearHistory();
-    setMessages([]);
-    setSources([]);
-  }
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          question: q,
+          answer: res.answer || "I don't know. This information is not available in the SOP.",
+          sources: res.sources || []
+        };
+        return updated;
+      });
+    } catch (e) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          question: q,
+          answer: "Error while answering. Please try again.",
+          sources: []
+        };
+        return updated;
+      });
+    }
+
+    setLoading(false);
+  };
 
   return (
-    <div className="chat-card">
-      <button
-        onClick={handleClear}
-        style={{
-          background: "#ef4444",
-          color: "white",
-          border: "none",
-          padding: "6px 12px",
-          borderRadius: "6px",
-          cursor: "pointer",
-          marginBottom: "10px",
-        }}
-      >
-        Clear Chat
-      </button>
-
-      <div className="messages">
+    <div className="chat-box">
+      <div className="chat-messages">
         {messages.map((m, i) => (
-          <Message key={i} role={m.role} text={m.text} />
+          <div key={i} className="chat-pair">
+            <div className="user-msg">
+              <strong>You</strong>
+              <p>{m.question}</p>
+            </div>
+
+            <div className="ai-msg">
+              <strong>OpsMind AI</strong>
+              <p>{m.answer}</p>
+            </div>
+          </div>
         ))}
-        {loading && <Loader />}
+
+        {loading && <p className="thinking">🤖 Thinking…</p>}
       </div>
 
-      {sources.length > 0 && <SourceList sources={sources} />}
-
-      <div className="input-area">
+      <div className="chat-input">
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about SOPs..."
-          disabled={loading}
-          onKeyDown={(e) => e.key === "Enter" && handleAsk()}
+          placeholder="Ask about SOPs, policies, workflows…"
+          onKeyDown={(e) => e.key === "Enter" && send()}
         />
-        <button onClick={handleAsk} disabled={loading}>
-          {loading ? "Thinking..." : "Ask"}
-        </button>
+        <button onClick={send}>Send</button>
       </div>
     </div>
   );

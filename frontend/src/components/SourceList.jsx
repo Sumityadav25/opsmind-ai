@@ -1,35 +1,77 @@
-import { useState } from "react";
-import Modal from "./Modal";
+import { useEffect, useState } from "react";
+import { uploadPDF } from "../services/api";
 
-export default function SourceList({ sources }) {
-  const [selected, setSelected] = useState(null);
+const API = "http://127.0.0.1:5000/api";
+
+export default function SourceList() {
+  const [docs, setDocs] = useState([]);
+  const [file, setFile] = useState(null);
+  const token = localStorage.getItem("token");
+
+  const loadDocs = async () => {
+    const res = await fetch(`${API}/upload/list`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    setDocs(data);
+  };
+
+  useEffect(() => {
+    loadDocs();
+  }, []);
+
+  const upload = async () => {
+    if (!file) return alert("Select PDF");
+    await uploadPDF(file);
+    setFile(null);
+    loadDocs();
+  };
+
+  const remove = async (doc) => {
+    await fetch(`${API}/upload/${doc}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    loadDocs();
+  };
 
   return (
-    <div className="sources">
-      <h4>Sources</h4>
-      <ul>
-        {sources.map((src, i) => (
-          <li key={i}>
-            <button className="link" onClick={() => setSelected(src)}>
-              {src.documentName} | Chunk {src.chunkId} | Score {src.score}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div>
+      {/* Upload */}
+      <input
+        type="file"
+        accept="application/pdf"
+        onChange={e => setFile(e.target.files[0])}
+      />
+      <button onClick={upload} style={{ marginTop: 8 }}>
+        Upload PDF
+      </button>
 
-      {selected && (
-        <Modal
-          title="SOP Reference"
-          onClose={() => setSelected(null)}
-        >
-          <p><strong>Document:</strong> {selected.documentName}</p>
-          <p><strong>Chunk ID:</strong> {selected.chunkId}</p>
-          <p><strong>Similarity Score:</strong> {selected.score}</p>
-          <p style={{ marginTop: "10px", color: "#666" }}>
-            (Chunk text preview will be added in next iteration)
-          </p>
-        </Modal>
+      <hr style={{ margin: "15px 0", opacity: 0.2 }} />
+
+      {/* List */}
+      {docs.length === 0 && (
+        <p style={{ opacity: 0.6 }}>No PDFs uploaded</p>
       )}
+
+      {docs.map(doc => (
+        <div key={doc} style={{ marginBottom: 10 }}>
+          📄 {doc}
+          <button
+            onClick={() => remove(doc)}
+            style={{
+              float: "right",
+              background: "red",
+              border: "none",
+              color: "white",
+              borderRadius: 4,
+              cursor: "pointer"
+            }}
+          >
+            ✖
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

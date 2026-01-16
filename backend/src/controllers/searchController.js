@@ -51,8 +51,9 @@ export const getChunkById = async (req, res) => {
     const { doc, chunkId } = req.params;
 
     const chunk = await SOPChunk.findOne({
-      documentName: doc,
-      chunkId: Number(chunkId),
+
+      uploadedBy: req.user.id
+
     });
 
     if (!chunk) {

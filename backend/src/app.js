@@ -1,37 +1,40 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import express from "express";
 import cors from "cors";
-
+import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 
+import askRoutes from "./routes/askRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
-import askRoutes from "./routes/askRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
-// 🔹 Initialize app
-const app = express();
-
-// 🔹 Global Middlewares (VERY IMPORTANT)
-app.use(cors());
-app.use(express.json()); // <-- req.body fix (MANDATORY)
-
-// 🔹 Database Connection
+dotenv.config();
 connectDB();
 
-// 🔹 Routes
-app.use("/api", askRoutes);          // /api/ask , /api/history
-app.use("/api", searchRoutes);       // /api/search , /api/chunk
-app.use("/api/upload", uploadRoutes);// /api/upload
+const app = express();
 
-// 🔹 Health Check
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.use(express.json({ limit: "10mb" }));
+
+// Health check
 app.get("/", (req, res) => {
-  res.send("OpsMind AI Backend Running...");
+  res.send("OpsMind AI Backend Running");
 });
 
-// 🔹 Start Server
+// 🔓 Public routes
+app.use("/api/auth", authRoutes);
+
+// 🔐 Secured routes (JWT handled inside route files)
+app.use("/api/ask", askRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/upload", uploadRoutes);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 OpsMind AI running on port ${PORT}`));

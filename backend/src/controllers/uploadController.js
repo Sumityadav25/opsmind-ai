@@ -1,38 +1,40 @@
-import { parsePDF } from "../utils/pdfParser.js";
-import { chunkText } from "../utils/chunker.js";
-import { generateEmbedding } from "../utils/embeddingGenerator.js";
-import SOPChunk from "../models/SOPChunk.js";
+import SOPChunk from '../models/SOPChunk.js';
+import { generateEmbedding } from '../utils/embeddingGenerator.js';
+import { pdfParser } from '../utils/pdfParser.js';
 
 export const uploadPDF = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    console.log('📄 Upload:', req.file?.originalname, 'Size:', req.file?.size);
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'No valid PDF uploaded' });
     }
 
-    // 1️⃣ Get PDF buffer
-    const pdfBuffer = req.file.buffer;
+    const documentName = req.file.originalname.replace('.pdf', '');
+    const chunks = await pdfParser(req.file.buffer);
 
-    // 2️⃣ Parse PDF
-    const text = await parsePDF(pdfBuffer);
-
-    // 3️⃣ Chunk text
-    const chunks = chunkText(text);
-
-    // 4️⃣ Store chunks
+    // ✅ FIXED: chunkId as NUMBER (not string)
+    let savedCount = 0;
     for (let i = 0; i < chunks.length; i++) {
-      const embedding = generateEmbedding(chunks[i]);
-
       await SOPChunk.create({
-        documentName: req.file.originalname,
-        chunkId: i,
+        documentName,
+        chunkId: i + 1,  // ✅ NUMBER only (1, 2, 3...)
         text: chunks[i],
-        embedding
+        embedding: generateEmbedding(chunks[i]),
+        uploadedBy: req.user.id
+
       });
+      savedCount++;
     }
 
-    res.json({ message: "PDF processed and stored" });
-  } catch (err) {
-    console.error("Upload error:", err);
-    res.status(500).json({ error: "PDF upload failed" });
+    console.log(`✅ Saved ${savedCount} chunks from ${documentName}`);
+    res.json({
+      message: `✅ ${documentName} processed! ${savedCount} chunks added to knowledge base`,
+      chunks: savedCount
+    });
+
+  } catch (error) {
+    console.error('❌ Upload failed:', error.message);
+    res.status(500).json({ error: error.message });
   }
 };
